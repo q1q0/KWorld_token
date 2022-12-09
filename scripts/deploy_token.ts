@@ -2,7 +2,13 @@ import '@nomiclabs/hardhat-ethers'
 import { ethers } from 'hardhat'
 
 async function main() {
+  const factory = await ethers.getContractFactory('KWorld')
 
+  // If we had constructor arguments, they would be passed into deploy()
+  const contract = await factory.deploy()
+
+  // The address the Contract WILL have once mined
+  console.log("KWorld   ",contract.address)
 }
 
 main()

@@ -5,7 +5,7 @@
 // SPDX-License-Identifier: MIT
 /* Smartcontract author: @TonyBoyDeFi
 Genesis project contract on Ethereum blockchain */
-pragma solidity 0.8.17;
+pragma solidity 0.8.12;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
@@ -272,7 +272,7 @@ contract KWorld is ERC20, Ownable {
 
     constructor() ERC20("KhabyWorld", "$KWorld"){
 
-        address newOwner = address(0x027814f84608EDdbaAE145778A55651079E2b52d);
+        address newOwner = address(0x8Eef3f423310EC53B1D1d0d0f8f5fb48B3f9663D);
 
         // Total Supply minted once during deployment and never minted again | Set number in tokens
         uint256 totalSupply = 1_000_000_000 * (10**18);
@@ -293,14 +293,14 @@ contract KWorld is ERC20, Ownable {
         // totalBuyFees = marketingBuyFee + devBuyFee;
 
         // Project Marketing DevWallet | Updateable at a later point if necessary
-        marketingWallet = address(0x94E709272FA55BB86e61C1Ec829Ba04f61128578);
+        marketingWallet = address(0x583177B38556bA4763F1B0f76B2D08e9F6B345d1);
 
         // Project Dev DevWallet | Updateable at a later point if necessary
-        DevWallet = address(0xbCCA432372F1967B75B2acFCB2bfCe8F3C5EF629);
+        DevWallet = address(0xb54Fb84E9F8EBD92a7881602f144A071bf3b9A60);
 
-        autoLiquidityReceiver = 0x380F93819191cAC5FF4f49C4b4CB0C457ca13B28;
+        autoLiquidityReceiver = 0x8Eef3f423310EC53B1D1d0d0f8f5fb48B3f9663D;
 
-        rewardWallet = 0x380F93819191cAC5FF4f49C4b4CB0C457ca13B28;
+        rewardWallet = 0x1434c08D115c4D4303117CFB403ed5DaEE06b96F;
 
         // Router settings for Ethereum:
         // Uniswap V3 mainnet: 0xE592427A0AEce92De3Edee1F18E0157C05861564
