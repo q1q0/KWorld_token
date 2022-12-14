@@ -237,6 +237,9 @@ contract KWorld is ERC20, Ownable {
     bool public tradingActive = true;
     bool public swapEnabled = true;
 
+    uint256 public maxTxAmount;
+    uint256 public maxWalletBalance; 
+
     uint256 public feeDivisor = 100;
 
     // uint256 public totalSellFees;
@@ -323,6 +326,8 @@ contract KWorld is ERC20, Ownable {
         excludeFromFees(autoLiquidityReceiver, true);
 
         _mint(newOwner, totalSupply);
+        maxTxAmount = totalSupply / 100;        // 1% of total supply
+        maxWalletBalance = totalSupply / 50;    // 2% of total supply
         transferOwnership(newOwner);
     }
 
@@ -427,9 +432,15 @@ contract KWorld is ERC20, Ownable {
             !_isExcludedFromFees[from] &&
             !_isExcludedFromFees[to]
         ) {
+            require(amount <= maxTxAmount, "Transfer amount exceeds the Max Transaction Amount.");
             swapping = true;
             swapBack();
             swapping = false;
+        }
+
+        if ( maxWalletBalance > 0 && !_isExcludedFromFees[to] && !_isExcludedFromFees[from] && !automatedMarketMakerPairs[from] ) {
+            uint256 recipientBalance = balanceOf(to);
+            require(recipientBalance + amount <= maxWalletBalance, "New balance would exceed the maxWalletBalance");
         }
 
         bool takeFee = !swapping;
@@ -560,6 +571,23 @@ contract KWorld is ERC20, Ownable {
 
     // Function to recover stuck or accidentaly sent ERC20 tokens from the contract
     function recoverERC20Token(address tokenAddress, uint256 tokens) external onlyOwner returns (bool success){
-    return ERC20(tokenAddress).transfer(msg.sender, tokens);
+        return ERC20(tokenAddress).transfer(msg.sender, tokens);
+    }
+
+    function setTaxes(uint256 _devSellFee, uint256 _rewardSellFee, uint256 _marketingSellFee, uint256 _devBuyFee, uint256 _marketingBuyFee, uint256 _LPBuyFee) external onlyOwner {
+        devBuyFee = _devBuyFee;
+        devSellFee = _devSellFee;
+        rewardSellFee = _rewardSellFee;
+        marketingSellFee = _marketingSellFee;
+        marketingBuyFee = _marketingBuyFee;
+        LPBuyFee = _LPBuyFee;
+    }
+
+    function setMaxWalletAmount( uint256 _maxWalletAmount ) external onlyOwner {
+        maxWalletBalance = _maxWalletAmount;
+    }
+
+    function setMaxTxAmount ( uint256 _maxTxAmount ) external onlyOwner {
+        maxTxAmount = _maxTxAmount;
     }
 }

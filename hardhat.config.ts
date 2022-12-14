@@ -107,8 +107,6 @@ const config: HardhatUserConfig = {
     },
     mainnet: {
       url: `https://mainnet.infura.io/v3/${process.env.INFURA_KEY}`,
-      chainId: 1,
-      gasPrice: 20000000000,
       accounts: [process.env.PRIVATE_KEY],
     },
     rinkeby: {
@@ -120,6 +118,7 @@ const config: HardhatUserConfig = {
     goerli: {
       url: `https://goerli.infura.io/v3/${process.env.INFURA_KEY}`,
       accounts: [process.env.PRIVATE_KEY],
+      gasPrice: 20000000000,
     },
     mumbai: {
       url: 'https://polygon-mumbai.g.alchemy.com/v2/YYZyqE0v2BO7ap26Ie16IWdRWpr2T0Wy',

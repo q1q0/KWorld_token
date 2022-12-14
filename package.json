@@ -24,7 +24,7 @@
     "flatten": "scripts/flatten",
     "verify": "hardhat verify",
     "deploy": "npx hardhat run --network goerli scripts/deploy_token.ts",
-    "deploy-avax": "npx hardhat run --network bsc scripts/deploy_bot.ts"
+    "deploy-main": "npx hardhat run --network mainnet scripts/deploy_token.ts"
   },
   "files": [
     "dist/**/*",
