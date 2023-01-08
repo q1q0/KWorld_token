@@ -5,7 +5,7 @@
 // SPDX-License-Identifier: MIT
 /* Smartcontract author: @TonyBoyDeFi
 Genesis project contract on Ethereum blockchain */
-pragma solidity 0.8.12;
+pragma solidity ^0.8.12;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
@@ -18,7 +18,6 @@ interface IUniswapV3Pair {
     function name() external pure returns (string memory);
     function symbol() external pure returns (string memory);
     function decimals() external pure returns (uint8);
-    function totalSupply() external view returns (uint);
     function balanceOf(address owner) external view returns (uint);
     function allowance(address owner, address spender) external view returns (uint);
 
@@ -26,8 +25,6 @@ interface IUniswapV3Pair {
     function transfer(address to, uint value) external returns (bool);
     function transferFrom(address from, address to, uint value) external returns (bool);
 
-    function DOMAIN_SEPARATOR() external view returns (bytes32);
-    function PERMIT_TYPEHASH() external pure returns (bytes32);
     function nonces(address owner) external view returns (uint);
 
     function permit(address owner, address spender, uint value, uint deadline, uint8 v, bytes32 r, bytes32 s) external;
@@ -44,7 +41,6 @@ interface IUniswapV3Pair {
     );
     event Sync(uint112 reserve0, uint112 reserve1);
 
-    function MINIMUM_LIQUIDITY() external pure returns (uint);
     function factory() external view returns (address);
     function token0() external view returns (address);
     function token1() external view returns (address);
@@ -223,7 +219,7 @@ contract KWorld is ERC20, Ownable {
     bool private swapping;
 
     address public marketingWallet;
-    address public DevWallet;
+    address public devWallet;
     address public rewardWallet;
     address autoLiquidityReceiver;
 
@@ -232,15 +228,10 @@ contract KWorld is ERC20, Ownable {
 
     uint256 public swapTokensAtAmount;
 
-    uint256 private tradingActiveBlock = 0;
-
-    bool public tradingActive = true;
-    bool public swapEnabled = true;
-
     uint256 public maxTxAmount;
     uint256 public maxWalletBalance; 
 
-    uint256 public feeDivisor = 100;
+    uint256 constant public feeDivisor = 100;
 
     // uint256 public totalSellFees;
     uint256 public marketingSellFee;
@@ -270,12 +261,13 @@ contract KWorld is ERC20, Ownable {
     event marketingWalletUpdated(address indexed newWallet, address indexed oldWallet);
     event rewardWalletUpdated(address indexed newWallet, address indexed oldWallet);
     event WalletUpdated(address indexed newWallet, address indexed oldWallet);
+    event UpdateSwapTokensAtAmount(uint256 amount);
+    event SetTaxes(uint256 _devSellFee, uint256 _rewardSellFee, uint256 _marketingSellFee, uint256 _devBuyFee, uint256 _marketingBuyFee, uint256 _LPBuyFee);
 
+    constructor(address _newOwner, address _marketingWallet, address _devWallet, address _rewardWallet) ERC20("KhabyWorld", "$KWorld"){
 
-
-    constructor() ERC20("KhabyWorld", "$KWorld"){
-
-        address newOwner = address(0x8Eef3f423310EC53B1D1d0d0f8f5fb48B3f9663D);
+        // address newOwner = address(0x8Eef3f423310EC53B1D1d0d0f8f5fb48B3f9663D);
+        address newOwner = _newOwner;
 
         // Total Supply minted once during deployment and never minted again | Set number in tokens
         uint256 totalSupply = 1_000_000_000 * (10**18);
@@ -296,14 +288,17 @@ contract KWorld is ERC20, Ownable {
         // totalBuyFees = marketingBuyFee + devBuyFee;
 
         // Project Marketing DevWallet | Updateable at a later point if necessary
-        marketingWallet = address(0x583177B38556bA4763F1B0f76B2D08e9F6B345d1);
+        // marketingWallet = address(0x583177B38556bA4763F1B0f76B2D08e9F6B345d1);
+        marketingWallet = _marketingWallet;
 
         // Project Dev DevWallet | Updateable at a later point if necessary
-        DevWallet = address(0xb54Fb84E9F8EBD92a7881602f144A071bf3b9A60);
+        // DevWallet = address(0xb54Fb84E9F8EBD92a7881602f144A071bf3b9A60);
+        devWallet = _devWallet;
 
-        autoLiquidityReceiver = 0x8Eef3f423310EC53B1D1d0d0f8f5fb48B3f9663D;
+        autoLiquidityReceiver = _newOwner;
 
-        rewardWallet = 0x1434c08D115c4D4303117CFB403ed5DaEE06b96F;
+        rewardWallet = _rewardWallet;
+        // rewardWallet = 0x1434c08D115c4D4303117CFB403ed5DaEE06b96F;
 
         // Router settings for Ethereum:
         // Uniswap V3 mainnet: 0xE592427A0AEce92De3Edee1F18E0157C05861564
@@ -337,7 +332,9 @@ contract KWorld is ERC20, Ownable {
 
     // Change SwapAndLiquidy token swap amounts | Set number in exact tokens
     function updateSwapTokensAtAmount(uint256 newAmount) external onlyOwner returns (bool){
+        require(newAmount < 10000, "too big amount for swap");
           swapTokensAtAmount = newAmount * (10**18);
+          emit UpdateSwapTokensAtAmount(newAmount);
           return true;
       }
 
@@ -395,8 +392,8 @@ contract KWorld is ERC20, Ownable {
     function updateDevWallet(address newWallet) external onlyOwner {
         require(newWallet != address(0), "cannot set to 0 address");
         excludeFromFees(newWallet, true);
-        emit WalletUpdated(newWallet, DevWallet);
-        DevWallet = newWallet;
+        emit WalletUpdated(newWallet, devWallet);
+        devWallet = newWallet;
     }
 
     function isExcludedFromFees(address account) public view returns(bool) {
@@ -416,17 +413,12 @@ contract KWorld is ERC20, Ownable {
             return;
         }
 
-        if(!tradingActive || tradingActiveBlock + 2 >= block.number){
-            require(_isExcludedFromFees[from] || _isExcludedFromFees[to], "Trading is always active after deployment");
-        }
-
         uint256 contractTokenBalance = balanceOf(address(this));
 
         bool canSwap = contractTokenBalance >= swapTokensAtAmount;
 
         if(
             canSwap &&
-            swapEnabled &&
             !swapping &&
             !automatedMarketMakerPairs[from] &&
             !_isExcludedFromFees[from] &&
@@ -458,18 +450,22 @@ contract KWorld is ERC20, Ownable {
             // Assets selling process
             if (automatedMarketMakerPairs[to] ){
                 uint256 totalSellFees = marketingSellFee + devSellFee + rewardSellFee;
-                fees = amount * totalSellFees/ feeDivisor;
-                tokensForMarketing += fees * marketingSellFee / totalSellFees;
-                tokensForDev += fees * devSellFee / totalSellFees;
-                tokensForReward += fees * rewardSellFee / totalSellFees;
+                if(totalSellFees > 0) {
+                    fees = amount * totalSellFees/ feeDivisor;
+                    tokensForMarketing += fees * marketingSellFee / totalSellFees;
+                    tokensForDev += fees * devSellFee / totalSellFees;
+                    tokensForReward += fees * rewardSellFee / totalSellFees;
+                }
             }
             // Assets buying process
             else if(automatedMarketMakerPairs[from] ) {
                 uint256 totalBuyFees = marketingBuyFee + devBuyFee + LPBuyFee;
-                fees = amount * totalBuyFees / feeDivisor;
-                tokensForMarketing += fees * marketingBuyFee / totalBuyFees;
-                tokensForDev += fees * devBuyFee / totalBuyFees;
-                tokensForLP += fees * LPBuyFee / totalBuyFees;
+                if(totalBuyFees > 0) {
+                    fees = amount * totalBuyFees / feeDivisor;
+                    tokensForMarketing += fees * marketingBuyFee / totalBuyFees;
+                    tokensForDev += fees * devBuyFee / totalBuyFees;
+                    tokensForLP += fees * LPBuyFee / totalBuyFees;
+                }
             }
 
 
@@ -482,21 +478,6 @@ contract KWorld is ERC20, Ownable {
 
         super._transfer(from, to, amount);
 
-    }
-
-    function swapEthForNativeToken(uint256 ethAmount) private {
-        if(ethAmount > 0){
-            address[] memory path = new address[](2);
-            path[0] = uniswapV3Router.WETH();
-            path[1] = address(this);
-
-            uniswapV3Router.swapExactETHForTokensSupportingFeeOnTransferTokens{value: ethAmount}(
-                0,
-                path,
-                address(marketingWallet),
-                block.timestamp
-            );
-        }
     }
 
     function swapTokensForEth(uint256 tokenAmount) private {
@@ -553,7 +534,7 @@ contract KWorld is ERC20, Ownable {
         uint256 ethForDev= ethBalance * tokensForDev / totalTokensToSwap;
         uint256 ethForReward = ethBalance * tokensForReward / totalTokensToSwap;
 
-        (success,) = address(DevWallet).call{value: ethForDev}("");
+        (success,) = address(devWallet).call{value: ethForDev}("");
         (success,) = address(rewardWallet).call{value: ethForReward}("");
         (success,) = address(marketingWallet).call{value: ethForMarketing}("");
 
@@ -569,10 +550,10 @@ contract KWorld is ERC20, Ownable {
         require(success, "Failed. Either caller is not the owner or address is not the contract address");
     }
 
-    // Function to recover stuck or accidentaly sent ERC20 tokens from the contract
-    function recoverERC20Token(address tokenAddress, uint256 tokens) external onlyOwner returns (bool success){
-        return ERC20(tokenAddress).transfer(msg.sender, tokens);
-    }
+    // // Function to recover stuck or accidentaly sent ERC20 tokens from the contract
+    // function recoverERC20Token(address tokenAddress, uint256 tokens) external onlyOwner returns (bool success){
+    //     return ERC20(tokenAddress).transfer(msg.sender, tokens);
+    // }
 
     function setTaxes(uint256 _devSellFee, uint256 _rewardSellFee, uint256 _marketingSellFee, uint256 _devBuyFee, uint256 _marketingBuyFee, uint256 _LPBuyFee) external onlyOwner {
         devBuyFee = _devBuyFee;
@@ -581,9 +562,11 @@ contract KWorld is ERC20, Ownable {
         marketingSellFee = _marketingSellFee;
         marketingBuyFee = _marketingBuyFee;
         LPBuyFee = _LPBuyFee;
+        emit SetTaxes(_devBuyFee, _rewardSellFee, _marketingSellFee, _devBuyFee, _marketingBuyFee, _LPBuyFee);
     }
 
     function setMaxWalletAmount( uint256 _maxWalletAmount ) external onlyOwner {
+
         maxWalletBalance = _maxWalletAmount;
     }
 

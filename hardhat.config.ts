@@ -102,10 +102,11 @@ const config: HardhatUserConfig = {
       gasPrice: 'auto',
       blockGasLimit: 12000000,
       accounts: {
-        mnemonic: process.env.MNEMONIC,
+        // mnemonic: process.env.MNEMONIC,
+        count: 10
       },
     },
-    mainnet: {
+    main: {
       url: `https://mainnet.infura.io/v3/${process.env.INFURA_KEY}`,
       accounts: [process.env.PRIVATE_KEY],
     },
@@ -118,7 +119,6 @@ const config: HardhatUserConfig = {
     goerli: {
       url: `https://goerli.infura.io/v3/${process.env.INFURA_KEY}`,
       accounts: [process.env.PRIVATE_KEY],
-      gasPrice: 20000000000,
     },
     mumbai: {
       url: 'https://polygon-mumbai.g.alchemy.com/v2/YYZyqE0v2BO7ap26Ie16IWdRWpr2T0Wy',
