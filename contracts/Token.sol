@@ -544,18 +544,10 @@ contract KWorld is ERC20, Ownable {
 
     // Recovery functions for stuck native balances and accidentally sent ERC20 tokens
 
-    // Function to recover stuck ETH from the contract address. Only callable by the owner
-    function recoverContractETH() external onlyOwner {
-        (bool success,) = address(msg.sender).call{value: address(this).balance}("Stuck ETH balance from contract address recovered");
-        require(success, "Failed. Either caller is not the owner or address is not the contract address");
-    }
-
-    // // Function to recover stuck or accidentaly sent ERC20 tokens from the contract
-    // function recoverERC20Token(address tokenAddress, uint256 tokens) external onlyOwner returns (bool success){
-    //     return ERC20(tokenAddress).transfer(msg.sender, tokens);
-    // }
-
     function setTaxes(uint256 _devSellFee, uint256 _rewardSellFee, uint256 _marketingSellFee, uint256 _devBuyFee, uint256 _marketingBuyFee, uint256 _LPBuyFee) external onlyOwner {
+        require(_devBuyFee + _marketingBuyFee + _LPBuyFee < 25 &&
+                _devSellFee + _rewardSellFee + _marketingSellFee < 25,
+                "too much fee");
         devBuyFee = _devBuyFee;
         devSellFee = _devSellFee;
         rewardSellFee = _rewardSellFee;
@@ -566,11 +558,12 @@ contract KWorld is ERC20, Ownable {
     }
 
     function setMaxWalletAmount( uint256 _maxWalletAmount ) external onlyOwner {
-
+        require(maxWalletBalance >= totalSupply() / 10000 && maxWalletBalance <= totalSupply() / 50, "not allowed amount");
         maxWalletBalance = _maxWalletAmount;
     }
 
     function setMaxTxAmount ( uint256 _maxTxAmount ) external onlyOwner {
+        require(_maxTxAmount >= totalSupply() / 10000 && _maxTxAmount <= totalSupply() / 100, "not allowed amount");
         maxTxAmount = _maxTxAmount;
     }
 }
